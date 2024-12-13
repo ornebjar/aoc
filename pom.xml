@@ -6,7 +6,7 @@
 
     <groupId>se.phet</groupId>
     <artifactId>aoc</artifactId>
-    <version>1.1-SNAPSHOT</version>
+    <version>1.1</version>
 
     <properties>
         <maven.compiler.source>23</maven.compiler.source>
