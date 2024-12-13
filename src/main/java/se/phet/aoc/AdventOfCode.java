@@ -71,7 +71,7 @@ public abstract class AdventOfCode<T> {
     private static final int BOXES = 13;
 
     private static int printProgress(AtomicInteger counter, int previous, List<?> list) {
-        int currentCount = counter.incrementAndGet();
+        int currentCount = counter.getAndIncrement();
         int percent = BOXES * BASE * currentCount / list.size();
         if (previous < percent) {
             StringBuilder sb = new StringBuilder("\r");
@@ -93,7 +93,7 @@ public abstract class AdventOfCode<T> {
                     sb.append(' ');
                 }
             }
-            System.out.printf("%s▏%2s%%", sb, 100 * currentCount / (list.size() + 1));
+            System.out.printf("%s▏%2s%%", sb, 100 * currentCount / list.size());
         }
         return percent;
     }
