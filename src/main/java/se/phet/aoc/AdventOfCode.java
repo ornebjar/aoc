@@ -201,7 +201,7 @@ public abstract class AdventOfCode<T> {
         }
     }
 
-    public static void main(String[] args) throws Throwable {
+    static void main() throws Throwable {
         try {
             String command = System.getProperty("sun.java.command");
             String[] commandArgs = command.split(" ");
