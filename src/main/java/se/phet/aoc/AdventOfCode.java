@@ -12,10 +12,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
+import java.util.stream.*;
 
 public abstract class AdventOfCode<T> {
 
@@ -54,25 +54,49 @@ public abstract class AdventOfCode<T> {
         return true;
     }
 
+    @SuppressWarnings("unchecked")
     private T trackProgress(T input) {
-        if (progressTracking() && input instanceof Stream<?> stream) {
-            var list = stream.toList();
-            AtomicInteger counter = new AtomicInteger();
-            AtomicInteger previous = new AtomicInteger(-1);
-            //noinspection unchecked
-            return (T) list.stream().peek(_ ->
-                    previous.getAndUpdate(prev -> printProgress(counter, prev, list))
-            );
+        if (!progressTracking() || !(input instanceof BaseStream)) {
+            return input;
         }
-        return input;
+
+        AtomicInteger counter = new AtomicInteger();
+        AtomicInteger previous = new AtomicInteger(-1);
+
+        return switch (input) {
+            case Stream<?> stream -> {
+                var list = stream.toArray();
+                yield (T) Arrays.stream(list).peek(_ ->
+                        previous.getAndUpdate(prev -> printProgress(counter, prev, list.length)));
+            }
+            case IntStream intStream -> {
+                var array = intStream.toArray();
+                yield (T) Arrays.stream(array).peek(_ ->
+                        previous.getAndUpdate(prev -> printProgress(counter, prev, array.length)));
+            }
+            case LongStream longStream -> {
+                var array = longStream.toArray();
+                yield (T) Arrays.stream(array).peek(_ ->
+                        previous.getAndUpdate(prev -> printProgress(counter, prev, array.length)));
+            }
+            case DoubleStream doubleStream -> {
+                var array = doubleStream.toArray();
+                yield (T) Arrays.stream(array).peek(_ ->
+                        previous.getAndUpdate(prev -> printProgress(counter, prev, array.length)));
+            }
+            default -> {
+                System.err.println("Warning: Progress tracking not implemented for " + input.getClass());
+                yield input;
+            }
+        };
     }
 
     private static final int BASE = 8;
     private static final int BOXES = 13;
 
-    private static int printProgress(AtomicInteger counter, int previous, List<?> list) {
+    private static int printProgress(AtomicInteger counter, int previous, int size) {
         int currentCount = counter.getAndIncrement();
-        int percent = BOXES * BASE * currentCount / list.size();
+        int percent = BOXES * BASE * currentCount / size;
         if (previous < percent) {
             StringBuilder sb = new StringBuilder("\r");
             for (int i = 0; i < BOXES; i++) {
@@ -93,7 +117,7 @@ public abstract class AdventOfCode<T> {
                     sb.append(' ');
                 }
             }
-            System.out.printf("%s▏%2s%%", sb, 100 * currentCount / list.size());
+            System.out.printf("%s▏%2s%%", sb, 100 * currentCount / size);
         }
         return percent;
     }
