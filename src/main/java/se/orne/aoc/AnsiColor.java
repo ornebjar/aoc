@@ -1,4 +1,4 @@
-package se.phet.aoc;
+package se.orne.aoc;
 
 class AnsiColor {
     public static final String RESET = "\u001B[0m";

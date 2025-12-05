@@ -11,10 +11,11 @@ To use this library, create a new class that extends the `AdventOfCode` class. I
 The class that extends `AdventOfCode` should be named `SomethingX`, where `X` is the day of the puzzle. The class should be placed in the `something.somethingYYYY` package, where `YYYY` is the year of the puzzle.
 
 ### Example
+
 ```java
 package something.yearYYYY;
 
-import se.phet.aoc.AdventOfCode;
+import se.orne.aoc.AdventOfCode;
 
 public class DayX extends AdventOfCode<T> {
 

@@ -1,4 +1,4 @@
-package se.phet.aoc;
+package se.orne.aoc;
 
 enum Part {
     ONE, TWO;

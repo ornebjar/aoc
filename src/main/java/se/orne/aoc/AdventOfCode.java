@@ -1,4 +1,4 @@
-package se.phet.aoc;
+package se.orne.aoc;
 
 import javax.security.sasl.AuthenticationException;
 import java.io.IOException;
@@ -17,7 +17,7 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.*;
 
-import static se.phet.aoc.AnsiColor.*;
+import static se.orne.aoc.AnsiColor.*;
 
 public abstract class AdventOfCode<T> {
 
