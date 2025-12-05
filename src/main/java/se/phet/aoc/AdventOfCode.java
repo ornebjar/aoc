@@ -17,7 +17,13 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.*;
 
+import static se.phet.aoc.AnsiColor.*;
+
 public abstract class AdventOfCode<T> {
+
+    private boolean isProgressTracking = false;
+    private String currentProgress = "";
+    private String currentHeader = "";
 
     public AdventOfCode() {
         Package pkg = getClass().getPackage();
@@ -28,18 +34,8 @@ public abstract class AdventOfCode<T> {
         execute(Part.TWO, year, day);
     }
 
-    private enum Part {
-        ONE, TWO;
-
-        String pretty() {
-            return switch (this) {
-                case ONE -> "Part 1";
-                case TWO -> "Part 2";
-            };
-        }
-    }
-
     private void execute(Part part, String year, String day) {
+        currentHeader = BLUE + year + RESET + '·' + CYAN + day + RESET + part.subscript();
         T input = trackProgress(input(readInput(year, day)));
         long startTime = System.currentTimeMillis();
         Object result = switch (part) {
@@ -47,7 +43,11 @@ public abstract class AdventOfCode<T> {
             case TWO -> part2(input);
         };
         long timeTaken = System.currentTimeMillis() - startTime;
-        System.out.printf("\r%s in [%s]: %s%n", part.pretty(), millisToString(timeTaken), result);
+
+        isProgressTracking = false;
+        currentProgress = "";
+
+        IO.println('\r' + currentHeader + ' ' + millisToString(timeTaken) + GREEN + " → " + RESET + result);
     }
 
     public boolean progressTracking() {
@@ -56,10 +56,15 @@ public abstract class AdventOfCode<T> {
 
     @SuppressWarnings("unchecked")
     private T trackProgress(T input) {
-        if (!progressTracking() || !(input instanceof BaseStream)) {
+        if (!(input instanceof BaseStream)) {
             return input;
         }
 
+        if (!progressTracking()) {
+            return input;
+        }
+
+        isProgressTracking = true;
         AtomicInteger counter = new AtomicInteger();
         AtomicInteger previous = new AtomicInteger(-1);
 
@@ -94,32 +99,50 @@ public abstract class AdventOfCode<T> {
     private static final int BASE = 8;
     private static final int BOXES = 13;
 
-    private static int printProgress(AtomicInteger counter, int previous, int size) {
+    private int printProgress(AtomicInteger counter, int previous, int size) {
         int currentCount = counter.getAndIncrement();
         int percent = BOXES * BASE * currentCount / size;
         if (previous < percent) {
-            StringBuilder sb = new StringBuilder("\r");
-            for (int i = 0; i < BOXES; i++) {
-                int diff = percent - i * BASE;
-                if (diff >= BASE) {
-                    // 0: 0x2588 = █
-                    sb.append((char) 0x2588);
-                } else if (diff > 0) {
-                    // 7: 0x2589 = ▉
-                    // 6: 0x258A = ▊
-                    // 5: 0x258B = ▋
-                    // 4: 0x258C = ▌
-                    // 3: 0x258D = ▍
-                    // 2: 0x258E = ▎
-                    // 1: 0x258F = ▏
-                    sb.append((char) (0x2590 - diff));
-                } else {
-                    sb.append(' ');
-                }
-            }
-            System.out.printf("%s▏%2s%%", sb, 100 * currentCount / size);
+            var progressBar = getProgressBar(percent);
+            int percentageValue = 100 * currentCount / size;
+
+            currentProgress = String.format("%s %s%s%s%%%s", currentHeader, progressBar,
+                    RESET, percentageValue, RESET);
+            IO.print("\r" + currentProgress);
         }
         return percent;
+    }
+
+    private static String getProgressBar(int percent) {
+        StringBuilder sb = new StringBuilder(GREEN);
+        for (int i = 0; i < BOXES; i++) {
+            int diff = percent - i * BASE;
+            if (diff >= BASE) {
+                // 0: 0x2588 = █
+                sb.append((char) 0x2588);
+            } else if (diff > 0) {
+                // 7: 0x2589 = ▉
+                // 6: 0x258A = ▊
+                // 5: 0x258B = ▋
+                // 4: 0x258C = ▌
+                // 3: 0x258D = ▍
+                // 2: 0x258E = ▎
+                // 1: 0x258F = ▏
+                sb.append((char) (0x2590 - diff));
+            } else {
+                sb.append(' ');
+            }
+        }
+        sb.append('▏');
+        return sb.toString();
+    }
+
+    protected void log(String message) {
+        if (isProgressTracking) {
+            IO.print("\r" + message + "\n" + currentProgress);
+        } else {
+            IO.println(message);
+        }
     }
 
     private static String extractLastNumber(String string) {
@@ -132,9 +155,12 @@ public abstract class AdventOfCode<T> {
     );
 
     private static String millisToString(long ms) {
-        return ms >= 1000
-                ? DECIMAL_FORMAT.format((double) ms / 1000) + "s"
-                : ms + "ms";
+        if (ms >= 1000) {
+            String value = DECIMAL_FORMAT.format((double) ms / 1000);
+            return "%s%s%ss".formatted(RED, value, RESET);
+        } else {
+            return "%s%s%sms".formatted(YELLOW, ms, RESET);
+        }
     }
 
     abstract public T input(String input);
@@ -161,7 +187,7 @@ public abstract class AdventOfCode<T> {
                 Files.createFile(inputPath);
                 Files.writeString(inputPath, download);
             } else {
-                System.out.println("Using downloaded file from " + inputPath);
+                IO.println(GREY + "Using downloaded file from " + inputPath + RESET);
             }
             return Files.readString(inputPath);
         } catch (IOException e) {
