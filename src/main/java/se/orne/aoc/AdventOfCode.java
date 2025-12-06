@@ -1,15 +1,6 @@
 package se.orne.aoc;
 
-import javax.security.sasl.AuthenticationException;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Arrays;
@@ -18,25 +9,32 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.*;
 
 import static se.orne.aoc.AnsiColor.*;
+import static se.orne.aoc.Run.REAL;
+import static se.orne.aoc.Run.TEST;
 
 public abstract class AdventOfCode<T> {
 
     private boolean isProgressTracking = false;
     private String currentProgress = "";
-    private String currentHeader = "";
+    private String currentHeader;
 
     public AdventOfCode() {
         Package pkg = getClass().getPackage();
         String year = extractLastNumber(pkg.getName());
         String day = extractLastNumber(getClass().getSimpleName());
 
-        execute(Part.ONE, year, day);
-        execute(Part.TWO, year, day);
+        String testInput = InputProvider.readExampleInput(year, day);
+        String realInput = InputProvider.readRealInput(year, day);
+
+        for (Part part : Part.values()) {
+            execute(testInput, TEST, part, year, day);
+            execute(realInput, REAL, part, year, day);
+        }
     }
 
-    private void execute(Part part, String year, String day) {
-        currentHeader = BLUE + year + RESET + '·' + CYAN + day + RESET + part.subscript();
-        T input = trackProgress(input(readInput(year, day)));
+    private void execute(String rawInput, Run run, Part part, String year, String day) {
+        currentHeader = BLUE + year + RESET + run.superscript() + CYAN + day + RESET + part.subscript();
+        T input = trackProgress(input(rawInput));
         long startTime = System.currentTimeMillis();
         Object result = switch (part) {
             case ONE -> part1(input);
@@ -47,52 +45,55 @@ public abstract class AdventOfCode<T> {
         isProgressTracking = false;
         currentProgress = "";
 
-        IO.println('\r' + currentHeader + ' ' + millisToString(timeTaken) + GREEN + " → " + RESET + result);
+        IO.println('\r' + currentHeader + ' ' + millisToString(timeTaken) + GREEN + " → " + run.color() + result);
     }
 
     public boolean progressTracking() {
         return true;
     }
 
-    @SuppressWarnings("unchecked")
     private T trackProgress(T input) {
-        if (!(input instanceof BaseStream)) {
+        if (!progressTracking()) {
             return input;
         }
-
-        if (!progressTracking()) {
+        if (!(input instanceof BaseStream<?, ?> baseStream)) {
             return input;
         }
 
         isProgressTracking = true;
-        AtomicInteger counter = new AtomicInteger();
-        AtomicInteger previous = new AtomicInteger(-1);
+
+        if (baseStream.isParallel()) {
+            currentProgress = currentHeader + YELLOW + " Progress tracking not supported for parallel streams." + RESET;
+            IO.print(currentProgress);
+            return input;
+        }
 
         return switch (input) {
-            case Stream<?> stream -> {
-                var list = stream.toArray();
-                yield (T) Arrays.stream(list).peek(_ ->
-                        previous.getAndUpdate(prev -> printProgress(counter, prev, list.length)));
-            }
-            case IntStream intStream -> {
-                var array = intStream.toArray();
-                yield (T) Arrays.stream(array).peek(_ ->
-                        previous.getAndUpdate(prev -> printProgress(counter, prev, array.length)));
-            }
-            case LongStream longStream -> {
-                var array = longStream.toArray();
-                yield (T) Arrays.stream(array).peek(_ ->
-                        previous.getAndUpdate(prev -> printProgress(counter, prev, array.length)));
-            }
-            case DoubleStream doubleStream -> {
-                var array = doubleStream.toArray();
-                yield (T) Arrays.stream(array).peek(_ ->
-                        previous.getAndUpdate(prev -> printProgress(counter, prev, array.length)));
-            }
+            case Stream<?> stream -> tracker(stream.toArray());
+            case IntStream intStream -> tracker(intStream.toArray());
+            case LongStream longStream -> tracker(longStream.toArray());
+            case DoubleStream doubleStream -> tracker(doubleStream.toArray());
             default -> {
                 System.err.println("Warning: Progress tracking not implemented for " + input.getClass());
                 yield input;
             }
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private T tracker(Object test) {
+        AtomicInteger counter = new AtomicInteger();
+        AtomicInteger previous = new AtomicInteger(-1);
+        return (T) switch (test) {
+            case Object[] array -> Arrays.stream(array).peek(_ ->
+                    previous.getAndUpdate(prev -> printProgress(counter, prev, array.length)));
+            case int[] array -> Arrays.stream(array).peek(_ ->
+                    previous.getAndUpdate(prev -> printProgress(counter, prev, array.length)));
+            case long[] array -> Arrays.stream(array).peek(_ ->
+                    previous.getAndUpdate(prev -> printProgress(counter, prev, array.length)));
+            case double[] array -> Arrays.stream(array).peek(_ ->
+                    previous.getAndUpdate(prev -> printProgress(counter, prev, array.length)));
+            default -> throw new RuntimeException("Unexpected array type: " + test.getClass());
         };
     }
 
@@ -171,60 +172,6 @@ public abstract class AdventOfCode<T> {
 
     public Object part2(T input) {
         return null;
-    }
-
-    private static final String URL = "https://adventofcode.com/%s/day/%s/input";
-
-    private String readInput(String year, String day) {
-        Path inputPath = Path.of("data/%s/input%s.csv".formatted(year, day));
-        try {
-            if (!Files.exists(inputPath)) {
-                String download = downloadInput(year, day);
-                if ("Puzzle inputs differ by user.  Please log in to get your puzzle input.".equals(download.trim())) {
-                    throw new AuthenticationException("New cookie required, update data/.cookie");
-                }
-                Files.createDirectories(inputPath.getParent());
-                Files.createFile(inputPath);
-                Files.writeString(inputPath, download);
-            } else {
-                IO.println(GREY + "Using downloaded file from " + inputPath + RESET);
-            }
-            return Files.readString(inputPath);
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    private String downloadInput(String year, String day) {
-        String cookie = getCookie();
-        String url = URL.formatted(year, day);
-        System.err.println("Downloading file " + url);
-        try (var client = HttpClient.newHttpClient()) {
-            return client.send(
-                    HttpRequest.newBuilder()
-                            .uri(new URI(url))
-                            .header("cookie", cookie)
-                            .GET()
-                            .build(),
-                    HttpResponse.BodyHandlers.ofString()
-            ).body();
-        } catch (URISyntaxException | IOException | InterruptedException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    private String getCookie() {
-        Path cookiePath = Path.of("data/.cookie");
-        try {
-            if (!Files.exists(cookiePath)) {
-                Files.createDirectories(cookiePath.getParent());
-                Files.createFile(cookiePath);
-                Files.writeString(cookiePath, "Your cookie here");
-            }
-            return Files.readString(cookiePath);
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
-        }
     }
 
     static void main() throws Throwable {
