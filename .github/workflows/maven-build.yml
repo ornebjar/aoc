@@ -1,4 +1,4 @@
-name: 🛠️ Maven CI Build
+name: 🛠️ Build
 
 on:
   push:

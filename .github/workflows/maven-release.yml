@@ -1,0 +1,87 @@
+name: 🚀 Release
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    # Prevents this job from running on the automatic commit it creates later.
+    if: "!contains(github.event.head_commit.message, 'Prepare next development iteration:')"
+
+    permissions:
+      contents: write # Needed for committing version changes and creating tags
+      packages: write # Needed to publish to GitHub Package Registry
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Required to manage Git history and tags
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+          server-id: github
+          settings-path: ${{ github.workspace }}
+
+      - name: Configure Git User
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions CD Bot"
+
+      # 1. Read the current SNAPSHOT version and calculate the next versions
+      - name: Calculate Release and Next Versions
+        id: versions
+        run: |
+          # Use Maven to read the current SNAPSHOT version (e.g., 2.0.0-SNAPSHOT)
+          CURRENT_SNAPSHOT=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          
+          # Strip the "-SNAPSHOT" suffix to get the stable release version (e.g., 2.0.0)
+          RELEASE_VERSION=${CURRENT_SNAPSHOT%-SNAPSHOT}
+          
+          # Simple patch increment (e.g., 2.0.0 -> 2.0.1-SNAPSHOT)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$RELEASE_VERSION"
+          NEXT_PATCH=$((PATCH + 1))
+          NEXT_SNAPSHOT="${MAJOR}.${MINOR}.${NEXT_PATCH}-SNAPSHOT"
+          
+          echo "RELEASE_VERSION=$RELEASE_VERSION" >> $GITHUB_OUTPUT
+          echo "NEXT_SNAPSHOT=$NEXT_SNAPSHOT" >> $GITHUB_OUTPUT
+
+      # 2. Set POM version to stable version, deploy to GPR, and revert the version change
+      - name: Deploy Stable Release Artifact to GPR
+        run: |
+          # Set POM to stable version (e.g., 2.0.0)
+          mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.RELEASE_VERSION }}
+          # Deploy the artifact to GitHub Package Registry
+          mvn -B deploy
+          # Revert the version change so we can bump to the next SNAPSHOT
+          mvn -B versions:revert
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3. Create the Git Tag for the stable release
+      - name: Create Git Tag and GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.versions.outputs.RELEASE_VERSION }}
+          name: Release ${{ steps.versions.outputs.RELEASE_VERSION }}
+          body: Automated release from main branch push.
+          draft: false
+          prerelease: false
+
+      # 4. Bump the POM version to the next SNAPSHOT
+      - name: Prepare for next development iteration
+        run: mvn versions:set -DnewVersion=${{ steps.versions.outputs.NEXT_SNAPSHOT }}
+
+      # 5. Commit and push the final SNAPSHOT version back to main
+      - name: Commit and Push new SNAPSHOT version
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          # Commit the pom.xml change (e.g., 2.0.1-SNAPSHOT)
+          commit_message: "Prepare next development iteration: ${{ steps.versions.outputs.NEXT_SNAPSHOT }}"
+          file_pattern: 'pom.xml'
