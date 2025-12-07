@@ -27,39 +27,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up JDK and GPG
+      - name: Set up JDK, Maven server creds and GPG
         id: setup-java
         uses: actions/setup-java@v5
         with:
           java-version-file: .java-version
           distribution: 'temurin'
           cache: maven
+          server-id: ossrh
+          server-username: ${{ secrets.OSSRH_USERNAME }}
+          server-password: ${{ secrets.OSSRH_TOKEN }}
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
 
       - name: Configure Git User
         run: |
           git config user.email "actions@github.com"
           git config user.name "GitHub Actions CD Bot"
-
-      - name: Generate Maven settings.xml
-        run: |
-          # Use EOF without quotes so OSSRH_USERNAME and OSSRH_TOKEN expand into the file
-          cat > "$GITHUB_WORKSPACE/settings.xml" << EOF
-          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
-            <servers>
-              <server>
-                <id>ossrh</id>
-                <username>${OSSRH_USERNAME}</username>
-                <password>${OSSRH_TOKEN}</password>
-              </server>
-            </servers>
-          </settings>
-          EOF
-        env:
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_TOKEN: ${{ secrets.OSSRH_TOKEN }}
 
       - name: Calculate Release and Next Versions
         id: versions
@@ -74,15 +57,8 @@ jobs:
 
       - name: Deploy Stable Release Artifact to Maven Central Staging
         run: |
-          SETTINGS_PATH="$GITHUB_WORKSPACE/settings.xml"
-          if [ ! -f "$SETTINGS_PATH" ]; then
-            echo "ERROR: Expected Maven settings file not found at $SETTINGS_PATH" >&2
-            ls -al "$GITHUB_WORKSPACE" || true
-            exit 1
-          fi
-
           mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.RELEASE_VERSION }}
-          mvn -B deploy -P release-central -s "$SETTINGS_PATH"
+          mvn -B deploy -P release-central
           mvn -B versions:revert
 
       - name: Create Git Tag and GitHub Release
