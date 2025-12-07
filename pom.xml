@@ -12,12 +12,13 @@
         <java.version>25</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <github.repository>ornebjar/aoc</github.repository>
     </properties>
 
     <scm>
-        <connection>scm:git:https://github.com/${{github.repository}}.git</connection>
-        <developerConnection>scm:git:https://github.com/${{github.repository}}.git</developerConnection>
-        <url>https://github.com/${{github.repository}}</url>
+        <connection>scm:git:https://github.com/${github.repository}.git</connection>
+        <developerConnection>scm:git:https://github.com/${github.repository}.git</developerConnection>
+        <url>https://github.com/${github.repository}</url>
         <tag>HEAD</tag>
     </scm>
 
@@ -29,7 +30,7 @@
                 <version>3.3.0</version>
                 <configuration>
                     <arguments>-B</arguments>
-                    <tagBase>https://github.com/${{github.repository}}/tags</tagBase>
+                    <tagBase>https://github.com/${github.repository}/tags</tagBase>
                 </configuration>
             </plugin>
 
@@ -45,7 +46,7 @@
         <repository>
             <id>github</id>
             <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/${{github.repository}}</url>
+            <url>https://maven.pkg.github.com/${github.repository}</url>
         </repository>
     </distributionManagement>
 </project>
