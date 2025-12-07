@@ -75,15 +75,26 @@ jobs:
           echo "NEXT_SNAPSHOT=$NEXT_SNAPSHOT" >> $GITHUB_OUTPUT
 
       - name: Deploy Stable Release Artifact to Maven Central Staging
+        env:
+          MAVEN_SETTINGS_PATH: ${{ steps.setup-java.outputs.settings-path }}
         run: |
+          if [ -z "$MAVEN_SETTINGS_PATH" ]; then
+            echo "ERROR: MAVEN_SETTINGS_PATH is empty. Check actions/setup-java configuration." >&2
+            exit 1
+          fi
+          if [ ! -f "$MAVEN_SETTINGS_PATH" ]; then
+            echo "ERROR: Maven settings.xml not found at $MAVEN_SETTINGS_PATH" >&2
+            exit 1
+          fi
+
           # Set POM to stable version (e.g., 2.0.0)
           mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.RELEASE_VERSION }}
           # Deploy using the release-central profile to trigger signing and deployment
-          mvn -B deploy -P release-central -s "${{ steps.setup-java.outputs.settings-path }}"
+          mvn -B deploy -P release-central -s "$MAVEN_SETTINGS_PATH"
           # Revert the version change
           mvn -B versions:revert
 
-      # 3. Create the Git Tag for the stable release
+      # 3. Create the Git Tag and GitHub Release
       - name: Create Git Tag and GitHub Release
         uses: softprops/action-gh-release@v2
         with:
