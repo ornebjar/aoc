@@ -10,18 +10,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    # Define environment variables
-    env:
-      JAVA_VERSION: '25' # Set the Java version you want to use
-
     steps:
       - uses: actions/checkout@v6
 
-      # 1. Set up the specified Java environment
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
+      - name: Set up JDK
         uses: actions/setup-java@v5
         with:
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version-file: .java-version
           distribution: 'temurin'
           cache: maven # Caches Maven dependencies for faster builds
 

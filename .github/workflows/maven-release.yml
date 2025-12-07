@@ -38,15 +38,10 @@ jobs:
         with:
           fetch-depth: 0 # Required to manage Git history and tags
 
-      - name: Get Java Version from POM
-        id: get_java
-        run: |
-          echo "JAVA_VERSION=$(mvn help:evaluate -Dexpression=java.version -q -DforceStdout)" >> $GITHUB_OUTPUT
-
-      - name: Set up JDK ${{ steps.get_java.outputs.JAVA_VERSION }}
+      - name: Set up JDK
         uses: actions/setup-java@v5
         with:
-          java-version: ${{ steps.get_java.outputs.JAVA_VERSION }}
+          java-version-file: .java-version
           distribution: 'temurin'
           cache: maven
           server-id: github
