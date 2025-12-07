@@ -1,41 +1,31 @@
 name: 🚀 Release
 
 on:
-  # This section tells the Release workflow to run only after another workflow finishes
   workflow_run:
-    # 1. Specify the name of the CI/Build workflow that must finish first
     workflows: ["🛠️ Build"]
-    # 2. Specify the branches to monitor
     types: [completed]
-    # 3. Only run the release if the prior workflow succeeded
     branches: [main]
-    # 4. Only proceed if the prior workflow's conclusion was success
-    #    (You need a job check for this, as shown below)
 
 jobs:
   check_ci:
-    # This initial job ensures the CI run was successful before proceeding
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - run: echo "CI build succeeded, proceeding with release."
-      # The rest of your release jobs (like the actual deployment)
-      # should use the 'needs: check_ci' keyword to depend on this job.
 
   release:
     needs: check_ci
     runs-on: ubuntu-latest
 
-    # Prevents this job from running on the automatic commit it creates later.
     if: "!contains(github.event.head_commit.message, 'Prepare next development iteration:')"
 
     permissions:
-      contents: write # Needed for committing version changes and creating tags
+      contents: write
 
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 0 # Required to manage Git history and tags
+          fetch-depth: 0
 
       - name: Set up JDK and GPG
         id: setup-java
@@ -44,11 +34,9 @@ jobs:
           java-version-file: .java-version
           distribution: 'temurin'
           cache: maven
-          # CONFIGURE SONATYPE AUTHENTICATION
           server-id: ossrh
           server-username: ${{ secrets.OSSRH_USERNAME }}
           server-password: ${{ secrets.OSSRH_TOKEN }}
-          # INJECT PASSPHRASE-LESS GPG KEY
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
 
       - name: Configure Git User
@@ -56,45 +44,49 @@ jobs:
           git config user.email "actions@github.com"
           git config user.name "GitHub Actions CD Bot"
 
-      # 1. Read the current SNAPSHOT version and calculate the next versions
+      - name: Generate Maven settings.xml
+        run: |
+          cat > "$GITHUB_WORKSPACE/settings.xml" << 'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <servers>
+              <server>
+                <id>ossrh</id>
+                <username>${env.OSSRH_USERNAME}</username>
+                <password>${env.OSSRH_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_TOKEN: ${{ secrets.OSSRH_TOKEN }}
+
       - name: Calculate Release and Next Versions
         id: versions
         run: |
-          # Use Maven to read the current SNAPSHOT version (e.g., 2.0.0-SNAPSHOT)
           CURRENT_SNAPSHOT=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          
-          # Strip the "-SNAPSHOT" suffix to get the stable release version (e.g., 2.0.0)
           RELEASE_VERSION=${CURRENT_SNAPSHOT%-SNAPSHOT}
-          
-          # Simple patch increment (e.g., 2.0.0 -> 2.0.1-SNAPSHOT)
           IFS='.' read -r MAJOR MINOR PATCH <<< "$RELEASE_VERSION"
           NEXT_PATCH=$((PATCH + 1))
           NEXT_SNAPSHOT="${MAJOR}.${MINOR}.${NEXT_PATCH}-SNAPSHOT"
-          
           echo "RELEASE_VERSION=$RELEASE_VERSION" >> $GITHUB_OUTPUT
           echo "NEXT_SNAPSHOT=$NEXT_SNAPSHOT" >> $GITHUB_OUTPUT
 
       - name: Deploy Stable Release Artifact to Maven Central Staging
-        env:
-          MAVEN_SETTINGS_PATH: ${{ steps.setup-java.outputs.settings-path }}
         run: |
-          if [ -z "$MAVEN_SETTINGS_PATH" ]; then
-            echo "ERROR: MAVEN_SETTINGS_PATH is empty. Check actions/setup-java configuration." >&2
-            exit 1
-          fi
-          if [ ! -f "$MAVEN_SETTINGS_PATH" ]; then
-            echo "ERROR: Maven settings.xml not found at $MAVEN_SETTINGS_PATH" >&2
+          SETTINGS_PATH="$GITHUB_WORKSPACE/settings.xml"
+          if [ ! -f "$SETTINGS_PATH" ]; then
+            echo "ERROR: Expected Maven settings file not found at $SETTINGS_PATH" >&2
+            ls -al "$GITHUB_WORKSPACE" || true
             exit 1
           fi
 
-          # Set POM to stable version (e.g., 2.0.0)
           mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.RELEASE_VERSION }}
-          # Deploy using the release-central profile to trigger signing and deployment
-          mvn -B deploy -P release-central -s "$MAVEN_SETTINGS_PATH"
-          # Revert the version change
+          mvn -B deploy -P release-central -s "$SETTINGS_PATH"
           mvn -B versions:revert
 
-      # 3. Create the Git Tag and GitHub Release
       - name: Create Git Tag and GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -104,14 +96,11 @@ jobs:
           draft: false
           prerelease: false
 
-      # 4. Bump the POM version to the next SNAPSHOT
       - name: Prepare for next development iteration
         run: mvn versions:set -DnewVersion=${{ steps.versions.outputs.NEXT_SNAPSHOT }}
 
-      # 5. Commit and push the final SNAPSHOT version back to main
       - name: Commit and Push new SNAPSHOT version
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          # Commit the pom.xml change (e.g., 2.0.1-SNAPSHOT)
           commit_message: "Prepare next development iteration: ${{ steps.versions.outputs.NEXT_SNAPSHOT }}"
           file_pattern: 'pom.xml'
