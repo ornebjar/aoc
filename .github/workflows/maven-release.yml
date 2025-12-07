@@ -35,19 +35,9 @@ jobs:
           distribution: 'temurin'
           cache: maven
           server-id: ossrh
-          server-username: ${{ secrets.OSSRH_USERNAME }}
-          server-password: ${{ secrets.OSSRH_TOKEN }}
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
-
-      - name: Debug Maven settings (redacted)
-        run: |
-          SETTINGS="$HOME/.m2/settings.xml"
-          echo "Using Maven settings from: $SETTINGS"
-          if [ -f "$SETTINGS" ]; then
-            sed -e 's/<password>.*<\/password>/<password>***redacted***<\/password>/' "$SETTINGS" || true
-          else
-            echo "settings.xml not found at $SETTINGS" >&2
-          fi
 
       - name: Configure Git User
         run: |
@@ -66,6 +56,9 @@ jobs:
           echo "NEXT_SNAPSHOT=$NEXT_SNAPSHOT" >> $GITHUB_OUTPUT
 
       - name: Deploy Stable Release Artifact to Maven Central Staging
+        env:
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
         run: |
           mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.RELEASE_VERSION }}
           mvn -B deploy -P release-central
