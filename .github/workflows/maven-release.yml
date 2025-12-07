@@ -39,6 +39,16 @@ jobs:
           server-password: ${{ secrets.OSSRH_TOKEN }}
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
 
+      - name: Debug Maven settings (redacted)
+        run: |
+          SETTINGS="$HOME/.m2/settings.xml"
+          echo "Using Maven settings from: $SETTINGS"
+          if [ -f "$SETTINGS" ]; then
+            sed -e 's/<password>.*<\/password>/<password>***redacted***<\/password>/' "$SETTINGS" || true
+          else
+            echo "settings.xml not found at $SETTINGS" >&2
+          fi
+
       - name: Configure Git User
         run: |
           git config user.email "actions@github.com"
