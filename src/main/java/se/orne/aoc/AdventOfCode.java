@@ -12,12 +12,27 @@ import static se.orne.aoc.AnsiColor.*;
 import static se.orne.aoc.Run.REAL;
 import static se.orne.aoc.Run.TEST;
 
+/// Base class for all Advent of Code solutions.
+///
+/// A typical subclass represents a specific year/day and provides implementations
+/// for [#input(String)], [#part1(Object)] and [#part2(Object)].
+/// The constructor automatically reads example and real input for the derived
+/// class and executes both parts on both inputs, printing a formatted summary
+/// including timing and optional progress information.
+///
+/// @param <T> the parsed input type used by the concrete day implementation
 public abstract class AdventOfCode<T> {
 
     private boolean isProgressTracking = false;
     private String currentProgress = "";
     private String currentHeader;
 
+    /// Creates a new Advent of Code runner for the concrete subclass.
+    ///
+    /// The constructor infers the year and day from the package name and class
+    /// name, reads both example and real inputs, and runs [#ONE] and
+    /// [#TWO] for each input. Output is written immediately using the
+    /// [IO] helper.
     public AdventOfCode() {
         Package pkg = getClass().getPackage();
         String year = extractLastNumber(pkg.getName());
@@ -48,6 +63,14 @@ public abstract class AdventOfCode<T> {
         IO.println('\r' + currentHeader + ' ' + millisToString(timeTaken) + GREEN + " → " + run.color() + result);
     }
 
+    /// Indicates whether progress tracking should be enabled for this instance.
+    ///
+    /// When this method returns `true`, and the parsed input returned from
+    /// [#input(String)] is a non-parallel [java.util.stream.BaseStream],
+    /// the framework will wrap it so that a textual progress bar is rendered to
+    /// the console while the stream is consumed.
+    ///
+    /// @return `true` if progress tracking should be enabled; `false` otherwise
     public boolean progressTracking() {
         return true;
     }
@@ -138,6 +161,14 @@ public abstract class AdventOfCode<T> {
         return sb.toString();
     }
 
+    /// Logs a message to the console in a way that cooperates with the progress bar.
+    ///
+    /// If progress tracking is currently active, the message is printed on a new
+    /// line and the progress bar is immediately re-rendered underneath. If no
+    /// progress tracking is active, the message is printed as a normal line.
+    ///
+    /// @param message the message to log
+    @SuppressWarnings("unused")
     protected void log(String message) {
         if (isProgressTracking) {
             IO.print("\r" + message + "\n" + currentProgress);
@@ -164,13 +195,30 @@ public abstract class AdventOfCode<T> {
         }
     }
 
-    abstract public T input(String input);
+    /// Parses the raw puzzle input into the type `T` used by this solution.
+    ///
+    /// Implementations are free to choose any representation that is convenient
+    /// for the puzzle (for example, a list of lines, a custom record type, or a
+    /// precomputed data structure). The returned value is passed to
+    /// [#part1(Object)] and [#part2(Object)].
+    ///
+    /// @param input the raw puzzle input as read from the input file
+    /// @return a parsed representation of the input
+    public abstract T input(String input);
 
-    public Object part1(T input) {
+    /// Solves part 1 of the puzzle for the given parsed input.
+    ///
+    /// @param input the parsed puzzle input produced by [#input(String)]
+    /// @return the answer for part 1 (any type with a meaningful `toString()`)
+    public Object part1(@SuppressWarnings("unused") T input) {
         return null;
     }
 
-    public Object part2(T input) {
+    /// Solves part 2 of the puzzle for the given parsed input.
+    ///
+    /// @param input the parsed puzzle input produced by [#input(String)]
+    /// @return the answer for part 2 (any type with a meaningful `toString()`)
+    public Object part2(@SuppressWarnings("unused") T input) {
         return null;
     }
 

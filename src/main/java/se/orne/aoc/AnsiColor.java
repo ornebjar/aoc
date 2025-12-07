@@ -10,7 +10,6 @@ class AnsiColor {
     public static final String RED = "\u001B[31m";
 
     private AnsiColor() {
-        // Utility class, prevent instantiation
+        throw new UnsupportedOperationException();
     }
 }
-
