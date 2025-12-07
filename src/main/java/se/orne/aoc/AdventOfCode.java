@@ -30,8 +30,8 @@ public abstract class AdventOfCode<T> {
     /// Creates a new Advent of Code runner for the concrete subclass.
     ///
     /// The constructor infers the year and day from the package name and class
-    /// name, reads both example and real inputs, and runs [#ONE] and
-    /// [#TWO] for each input. Output is written immediately using the
+    /// name, reads both example and real inputs, and runs [Part#ONE] and
+    /// [Part#TWO] for each input. Output is written immediately using the
     /// [IO] helper.
     public AdventOfCode() {
         Package pkg = getClass().getPackage();
