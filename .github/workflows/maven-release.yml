@@ -79,7 +79,7 @@ jobs:
           # Set POM to stable version (e.g., 2.0.0)
           mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.RELEASE_VERSION }}
           # Deploy using the release-central profile to trigger signing and deployment
-          mvn -B deploy -P release-central -s ${{ steps.setup-java.outputs.settings-path }}
+          mvn -B deploy -P release-central -s "${{ steps.setup-java.outputs.settings-path }}"
           # Revert the version change
           mvn -B versions:revert
 
