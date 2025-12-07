@@ -15,11 +15,30 @@
         <github.repository>ornebjar/aoc</github.repository>
     </properties>
 
+    <name>Advent of Code Runner Library</name>
+    <description>A library to help run your Advent of Code solutions</description>
+    <url>https://github.com/${github.repository}</url>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Patrik Örnebjar</name>
+            <email>patrik@orne.se</email>
+            <organization>orne.se</organization>
+            <organizationUrl>https://orne.se</organizationUrl>
+        </developer>
+    </developers>
+
     <scm>
         <connection>scm:git:https://github.com/${github.repository}.git</connection>
         <developerConnection>scm:git:https://github.com/${github.repository}.git</developerConnection>
         <url>https://github.com/${github.repository}</url>
-        <tag>HEAD</tag>
     </scm>
 
     <build>
@@ -44,9 +63,9 @@
 
     <distributionManagement>
         <repository>
-            <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/${github.repository}</url>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
+
 </project>
