@@ -38,6 +38,7 @@ jobs:
           fetch-depth: 0 # Required to manage Git history and tags
 
       - name: Set up JDK and GPG
+        id: setup-java
         uses: actions/setup-java@v5
         with:
           java-version-file: .java-version
@@ -78,7 +79,7 @@ jobs:
           # Set POM to stable version (e.g., 2.0.0)
           mvn -B versions:set -DnewVersion=${{ steps.versions.outputs.RELEASE_VERSION }}
           # Deploy using the release-central profile to trigger signing and deployment
-          mvn -B deploy -P release-central -s ${{ github.workspace }}/settings.xml
+          mvn -B deploy -P release-central -s ${{ steps.setup-java.outputs.settings-path }}
           # Revert the version change
           mvn -B versions:revert
 
