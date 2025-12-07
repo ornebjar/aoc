@@ -1,11 +1,29 @@
 name: 🚀 Release
 
 on:
-  push:
-    branches: [ "main" ]
+  # This section tells the Release workflow to run only after another workflow finishes
+  workflow_run:
+    # 1. Specify the name of the CI/Build workflow that must finish first
+    workflows: ["🛠️ Build"]
+    # 2. Specify the branches to monitor
+    types: [completed]
+    # 3. Only run the release if the prior workflow succeeded
+    branches: [main]
+    # 4. Only proceed if the prior workflow's conclusion was success
+    #    (You need a job check for this, as shown below)
 
 jobs:
+  check_ci:
+    # This initial job ensures the CI run was successful before proceeding
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "CI build succeeded, proceeding with release."
+      # The rest of your release jobs (like the actual deployment)
+      # should use the 'needs: check_ci' keyword to depend on this job.
+
   release:
+    needs: check_ci
     runs-on: ubuntu-latest
 
     # Prevents this job from running on the automatic commit it creates later.
@@ -20,10 +38,10 @@ jobs:
         with:
           fetch-depth: 0 # Required to manage Git history and tags
 
-      - name: Set up JDK 21
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v5
         with:
-          java-version: '21'
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
           cache: maven
           server-id: github
