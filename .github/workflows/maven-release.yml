@@ -78,8 +78,11 @@ jobs:
       - name: Prepare for next development iteration
         run: mvn versions:set -DnewVersion=${{ steps.versions.outputs.NEXT_SNAPSHOT }}
 
+      - name: Update README with released version
+        run: sed -i 's/<version>.*<\/version>/<version>${{ steps.versions.outputs.RELEASE_VERSION }}<\/version>/' README.md
+
       - name: Commit and Push new SNAPSHOT version
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "Prepare next development iteration: ${{ steps.versions.outputs.NEXT_SNAPSHOT }}"
-          file_pattern: 'pom.xml'
+          file_pattern: 'pom.xml README.md'

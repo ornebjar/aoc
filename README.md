@@ -1,6 +1,20 @@
 # Advent of Code
 
+[![Maven Central](https://img.shields.io/maven-central/v/se.orne.aoc/aoc.svg?label=Maven%20Central)](https://search.maven.org/artifact/se.orne.aoc/aoc)
+
 This is a base library for Advent of Code solutions. It is intended to be used as a starting point for solving the puzzles.
+
+## Installation
+
+Add the following dependency to your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>se.orne.aoc</groupId>
+    <artifactId>aoc</artifactId>
+    <version>2.0.7</version>
+</dependency>
+```
 
 ## Usage
 
