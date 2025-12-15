@@ -27,7 +27,7 @@ jobs:
 
       # 3. Save the built JAR as an artifact (optional, but good for quick debugging)
       - name: Upload JAR artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: aoc-jar
           path: target/*.jar
